@@ -1,0 +1,30 @@
+name: Sync Upstream
+
+on:
+  schedule:
+    # 工作日北京时间 10:00 (UTC 02:00)，避开 API 高峰
+    - cron: '0 2 * * 1-5'
+  # 支持手动触发
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+
+      - name: Sync upstream
+        run: |
+          git remote add upstream https://github.com/catlog22/maestro-flow.git
+          git fetch upstream master
+          git merge --ff-only upstream/master
+
+      - name: Push to origin
+        run: |
+          git push origin master
