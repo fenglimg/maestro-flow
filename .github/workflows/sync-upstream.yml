@@ -1,0 +1,35 @@
+name: Sync Upstream
+
+on:
+  schedule:
+    # 工作日北京时间 10:00 (UTC 02:00)，避开 API 高峰
+    - cron: '0 2 * * 1-5'
+  # 支持手动触发
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+
+      - name: Sync upstream (rebase local commits onto upstream)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add upstream https://github.com/catlog22/maestro-flow.git
+          git fetch upstream master
+          # rebase local-only commits (e.g. this CI workflow) on top of upstream
+          # 当本地有 fork-only commit（如本 workflow 自身）时，--ff-only 会失败
+          git rebase upstream/master
+
+      - name: Push to origin
+        run: |
+          # force-with-lease 保护并发写入：仅当远端 HEAD 仍是 checkout 时的状态才覆盖
+          git push --force-with-lease origin master
