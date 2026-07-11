@@ -7,6 +7,8 @@ on:
   # 支持手动触发
   workflow_dispatch:
 
+# GITHUB_TOKEN 默认不能改 .github/workflows/*；上游若更新 workflow 文件会 push 失败。
+# 必须用带 repo + workflow 权限的 PAT，存为 repo secret: SYNC_TOKEN
 permissions:
   contents: write
 
@@ -14,10 +16,21 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
+      - name: Require SYNC_TOKEN
+        env:
+          SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}
+        run: |
+          if [ -z "$SYNC_TOKEN" ]; then
+            echo "::error::Missing secret SYNC_TOKEN. Create a classic PAT with scopes 'repo' + 'workflow' (or fine-grained: Contents R/W + Workflows R/W), then: gh secret set SYNC_TOKEN --repo fenglimg/maestro-flow"
+            exit 1
+          fi
+
       - uses: actions/checkout@v4
         with:
           ref: master
           fetch-depth: 0
+          # PAT 具备 workflows 写权限，才能 push 上游对 .github/workflows/* 的变更
+          token: ${{ secrets.SYNC_TOKEN }}
 
       - name: Sync upstream (rebase local commits onto upstream)
         run: |
